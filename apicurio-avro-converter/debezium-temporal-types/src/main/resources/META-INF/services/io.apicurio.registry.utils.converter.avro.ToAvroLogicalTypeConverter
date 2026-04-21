@@ -1,0 +1,5 @@
+com.tikiinstitut.debezium.apicurio.converter.avro.DebeziumDateToAvro
+com.tikiinstitut.debezium.apicurio.converter.avro.DebeziumMicroTimestampToAvro
+com.tikiinstitut.debezium.apicurio.converter.avro.DebeziumMicroTimeToAvro
+com.tikiinstitut.debezium.apicurio.converter.avro.DebeziumTimestampToAvro
+com.tikiinstitut.debezium.apicurio.converter.avro.DebeziumTimeToAvro
