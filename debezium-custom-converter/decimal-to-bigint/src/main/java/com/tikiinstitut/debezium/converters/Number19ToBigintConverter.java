@@ -27,7 +27,12 @@ public class Number19ToBigintConverter implements CustomConverter<SchemaBuilder,
                 && column.length().orElse(-1) == 19
                 && column.scale().orElse(-1) == 0) {
 
-            registration.register(SchemaBuilder.int64().optional(), value -> {
+            SchemaBuilder schemaBuilder = SchemaBuilder.int64();
+            if (column.isOptional()) {
+                schemaBuilder.optional();
+            }
+
+            registration.register(schemaBuilder, value -> {
                 if (value == null) {
                     return null;
                 }

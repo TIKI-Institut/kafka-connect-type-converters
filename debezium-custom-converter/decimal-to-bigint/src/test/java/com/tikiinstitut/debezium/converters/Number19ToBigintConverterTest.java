@@ -23,6 +23,7 @@ class Number19ToBigintConverterTest {
         when(column.typeName()).thenReturn("NUMBER");
         when(column.length()).thenReturn(OptionalInt.of(19));
         when(column.scale()).thenReturn(OptionalInt.of(0));
+        when(column.isOptional()).thenReturn(true);
 
         CustomConverter.ConverterRegistration<SchemaBuilder> registration = mock(CustomConverter.ConverterRegistration.class);
         ArgumentCaptor<CustomConverter.Converter> converterCaptor = ArgumentCaptor.forClass(CustomConverter.Converter.class);
@@ -50,6 +51,27 @@ class Number19ToBigintConverterTest {
         
         // Null handling
         assertNull(valueConverter.convert(null));
+    }
+
+    @Test
+    void shouldHonorNonOptionalColumn() {
+        Number19ToBigintConverter converter = new Number19ToBigintConverter();
+        RelationalColumn column = mock(RelationalColumn.class);
+        when(column.typeName()).thenReturn("NUMBER");
+        when(column.length()).thenReturn(OptionalInt.of(19));
+        when(column.scale()).thenReturn(OptionalInt.of(0));
+        when(column.isOptional()).thenReturn(false);
+
+        CustomConverter.ConverterRegistration<SchemaBuilder> registration = mock(CustomConverter.ConverterRegistration.class);
+        ArgumentCaptor<SchemaBuilder> schemaBuilderCaptor = ArgumentCaptor.forClass(SchemaBuilder.class);
+
+        converter.converterFor(column, registration);
+
+        verify(registration).register(schemaBuilderCaptor.capture(), any());
+
+        Schema schema = schemaBuilderCaptor.getValue().build();
+        assertEquals(Schema.Type.INT64, schema.type());
+        assertFalse(schema.isOptional());
     }
 
     @Test

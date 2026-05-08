@@ -21,8 +21,7 @@ import java.sql.Statement;
 import java.util.Properties;
 import java.util.concurrent.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 @Testcontainers
 public class Number19ToBigintConverterIT {
@@ -45,7 +44,7 @@ public class Number19ToBigintConverterIT {
         Testing.Files.delete(Testing.Files.createTestingPath("data"));
 
         try (Connection conn = ORACLE.createConnection(""); Statement stmt = conn.createStatement()) {
-            stmt.execute("CREATE TABLE TEST.TEST_DECIMAL (ID NUMBER(1,0) PRIMARY KEY, VAL_DECIMAL DECIMAL(19,0))");
+            stmt.execute("CREATE TABLE TEST.TEST_DECIMAL (ID NUMBER(1,0) PRIMARY KEY, VAL_DECIMAL DECIMAL(19,0), VAL_NOT_NULL NUMBER(19,0) NOT NULL)");
             stmt.execute("ALTER TABLE TEST.TEST_DECIMAL ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
         }
     }
@@ -99,7 +98,7 @@ public class Number19ToBigintConverterIT {
         executor.execute(engine);
 
         try (Connection conn = ORACLE.createConnection(""); Statement stmt = conn.createStatement()) {
-            stmt.execute("INSERT INTO TEST.TEST_DECIMAL (ID, VAL_DECIMAL) VALUES (1, 1234567890123456789)");
+            stmt.execute("INSERT INTO TEST.TEST_DECIMAL (ID, VAL_DECIMAL, VAL_NOT_NULL) VALUES (1, 1234567890123456789, 111)");
         }
 
         SourceRecord record = consumedRecords.poll(20, TimeUnit.SECONDS);
@@ -113,5 +112,10 @@ public class Number19ToBigintConverterIT {
         assertNotNull(valDecimal);
         assertEquals(1234567890123456789L, valDecimal);
         assertEquals(Schema.INT64_SCHEMA.type(), after.schema().field("VAL_DECIMAL").schema().type());
+        assertTrue(after.schema().field("VAL_DECIMAL").schema().isOptional());
+
+        Object valNotNull = after.get("VAL_NOT_NULL");
+        assertEquals(111L, valNotNull);
+        assertFalse(after.schema().field("VAL_NOT_NULL").schema().isOptional());
     }
 }
