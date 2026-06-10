@@ -20,8 +20,8 @@ export ORACLE_SID
 sqlplus /nolog <<- EOF
 	CONNECT sys/test AS SYSDBA
 	-- Configure recovery area
-	alter system set db_recovery_file_dest_size = 2G scope=both;
-	alter system set db_recovery_file_dest = '/opt/oracle/oradata/recovery_area' scope=both;
+	alter system set db_recovery_file_dest_size = 2G;
+	alter system set db_recovery_file_dest = '/opt/oracle/oradata/recovery_area' scope=spfile;
 
 	-- Shutdown and restart database in mount mode to enable archive logging
 	shutdown immediate
@@ -71,6 +71,7 @@ sqlplus sys/test@//localhost:1521/FREE as sysdba <<- EOF
   GRANT SELECT_CATALOG_ROLE TO c##dbzuser CONTAINER=ALL;
   GRANT EXECUTE_CATALOG_ROLE TO c##dbzuser CONTAINER=ALL;
   GRANT SELECT ANY TRANSACTION TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT ANY DICTIONARY TO c##dbzuser CONTAINER=ALL;
   GRANT LOGMINING TO c##dbzuser CONTAINER=ALL;
 
   GRANT CREATE TABLE TO c##dbzuser CONTAINER=ALL;
@@ -89,9 +90,23 @@ sqlplus sys/test@//localhost:1521/FREE as sysdba <<- EOF
   GRANT SELECT ON V_$ARCHIVED_LOG TO c##dbzuser CONTAINER=ALL;
   GRANT SELECT ON V_$ARCHIVE_DEST_STATUS TO c##dbzuser CONTAINER=ALL;
   GRANT SELECT ON V_$TRANSACTION TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT ON V_$VERSION TO c##dbzuser CONTAINER=ALL;
 
   GRANT SELECT ON V_$MYSTAT TO c##dbzuser CONTAINER=ALL;
   GRANT SELECT ON V_$STATNAME TO c##dbzuser CONTAINER=ALL;
 
+  GRANT CREATE TABLE TO c##dbzuser CONTAINER=ALL;
+  GRANT ALTER ANY TABLE TO c##dbzuser CONTAINER=ALL;
+
+  exit;
+EOF
+
+sqlplus sys/test@//localhost:1521/FREEPDB1 as sysdba <<- EOF
+  CREATE USER debezium IDENTIFIED BY dbz;
+  GRANT CONNECT TO debezium;
+  GRANT CREATE SESSION TO debezium;
+  GRANT CREATE TABLE TO debezium;
+  GRANT CREATE SEQUENCE to debezium;
+  ALTER USER debezium QUOTA 100M on users;
   exit;
 EOF

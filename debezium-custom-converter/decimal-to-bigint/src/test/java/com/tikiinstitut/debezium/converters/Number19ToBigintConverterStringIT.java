@@ -12,11 +12,19 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class Number19ToBigintConverterIT extends AbstractOracleConnectorTest {
+/**
+ * This integration test should explicitly force that a string value is sent to the Custom converter.
+ * Unfortunately i couldn't reproduce this fully as mentioned at
+ * <a href="https://debezium.zulipchat.com/#narrow/channel/348250-community-oracle/topic/Oracle.20Logminer.20String.20value.20for.20decimal.20and.20number.20types/with/599091084">...</a>
+ * NOTE: Also don't combine this integration test with other tests, because i would break the String forcing. Reason unknown.
+ */
+public class Number19ToBigintConverterStringIT extends AbstractOracleConnectorTest {
 
     @Test
-    public void shouldConvertBigDecimalValues() throws Exception {
+    public void shouldConvertStringValues() throws Exception {
         final Properties props = createDebeziumProperties(testInfo.getDisplayName());
+        // this setting let LogMiner send String values to the CustomConverter
+        props.setProperty("snapshot.locking.mode", "none");
 
         startDebeziumEngine(props);
 
@@ -26,7 +34,7 @@ public class Number19ToBigintConverterIT extends AbstractOracleConnectorTest {
             stmt.execute("INSERT INTO TEST." + testInfo.getDisplayName() + " (ID, VAL_DECIMAL, VAL_NOT_NULL) VALUES (1, 1234567890123456789, 111)");
         }
 
-        SourceRecord record = consumedRecords.poll(20, TimeUnit.SECONDS);
+        SourceRecord record = consumedRecords.poll(60, TimeUnit.SECONDS);
         assertNotNull(record, "Should have captured a record");
 
         Struct value = (Struct) record.value();

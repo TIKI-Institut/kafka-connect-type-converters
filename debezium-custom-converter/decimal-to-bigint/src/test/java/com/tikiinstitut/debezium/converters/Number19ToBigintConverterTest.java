@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.math.BigDecimal;
+import java.sql.Types;
 import java.util.OptionalInt;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -21,6 +22,7 @@ class Number19ToBigintConverterTest {
         Number19ToBigintConverter converter = new Number19ToBigintConverter();
         RelationalColumn column = mock(RelationalColumn.class);
         when(column.typeName()).thenReturn("NUMBER");
+        when(column.jdbcType()).thenReturn(Types.NUMERIC);
         when(column.length()).thenReturn(OptionalInt.of(19));
         when(column.scale()).thenReturn(OptionalInt.of(0));
         when(column.isOptional()).thenReturn(true);
@@ -38,17 +40,20 @@ class Number19ToBigintConverterTest {
         assertTrue(schema.isOptional());
 
         CustomConverter.Converter valueConverter = converterCaptor.getValue();
-        
+
         // Normal conversion
         assertEquals(12345L, valueConverter.convert(new BigDecimal("12345")));
-        
+
         // Large value within long range
         assertEquals(Long.MAX_VALUE, valueConverter.convert(new BigDecimal(String.valueOf(Long.MAX_VALUE))));
-        
+
+        // String conversion (Fix for Issue)
+        assertEquals(1234567890123456789L, valueConverter.convert("1234567890123456789"));
+
         // Overflow case - should ignore overflow as per requirement (longValue() truncates)
         BigDecimal overflowValue = new BigDecimal(String.valueOf(Long.MAX_VALUE)).add(BigDecimal.ONE);
         assertEquals(Long.MIN_VALUE, valueConverter.convert(overflowValue));
-        
+
         // Null handling
         assertNull(valueConverter.convert(null));
     }
@@ -58,6 +63,7 @@ class Number19ToBigintConverterTest {
         Number19ToBigintConverter converter = new Number19ToBigintConverter();
         RelationalColumn column = mock(RelationalColumn.class);
         when(column.typeName()).thenReturn("NUMBER");
+        when(column.jdbcType()).thenReturn(Types.NUMERIC);
         when(column.length()).thenReturn(OptionalInt.of(19));
         when(column.scale()).thenReturn(OptionalInt.of(0));
         when(column.isOptional()).thenReturn(false);
@@ -82,11 +88,13 @@ class Number19ToBigintConverterTest {
         // Wrong type name
         RelationalColumn column1 = mock(RelationalColumn.class);
         when(column1.typeName()).thenReturn("VARCHAR");
+        when(column1.jdbcType()).thenReturn(Types.VARCHAR);
         converter.converterFor(column1, registration);
-        
+
         // Wrong precision
         RelationalColumn column2 = mock(RelationalColumn.class);
         when(column2.typeName()).thenReturn("NUMBER");
+        when(column2.jdbcType()).thenReturn(Types.NUMERIC);
         when(column2.length()).thenReturn(OptionalInt.of(10));
         when(column2.scale()).thenReturn(OptionalInt.of(0));
         converter.converterFor(column2, registration);
@@ -94,10 +102,43 @@ class Number19ToBigintConverterTest {
         // Wrong scale
         RelationalColumn column3 = mock(RelationalColumn.class);
         when(column3.typeName()).thenReturn("NUMBER");
+        when(column3.jdbcType()).thenReturn(Types.NUMERIC);
         when(column3.length()).thenReturn(OptionalInt.of(19));
         when(column3.scale()).thenReturn(OptionalInt.of(2));
         converter.converterFor(column3, registration);
 
         verify(registration, never()).register(any(), any());
+    }
+
+    @Test
+    void shouldConvertHexToRawFunction() {
+        Number19ToBigintConverter converter = new Number19ToBigintConverter();
+        RelationalColumn column = mock(RelationalColumn.class);
+        when(column.typeName()).thenReturn("NUMBER");
+        when(column.jdbcType()).thenReturn(Types.NUMERIC);
+        when(column.length()).thenReturn(OptionalInt.of(19));
+        when(column.scale()).thenReturn(OptionalInt.of(0));
+        when(column.isOptional()).thenReturn(true);
+
+        CustomConverter.ConverterRegistration<SchemaBuilder> registration = mock(CustomConverter.ConverterRegistration.class);
+        ArgumentCaptor<CustomConverter.Converter> converterCaptor = ArgumentCaptor.forClass(CustomConverter.Converter.class);
+
+        converter.converterFor(column, registration);
+        verify(registration).register(any(), converterCaptor.capture());
+
+        CustomConverter.Converter valueConverter = converterCaptor.getValue();
+
+        byte[] numberBytes = new oracle.sql.NUMBER(12345).getBytes();
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : numberBytes) {
+            hexString.append(String.format("%02x", b));
+        }
+
+        String hexToRawCall = Number19ToBigintConverter.OracleHexToRawHelper.HEXTORAW_FUNCTION_START +
+                hexString +
+                Number19ToBigintConverter.OracleHexToRawHelper.HEXTORAW_FUNCTION_END;
+
+        Object result = valueConverter.convert(hexToRawCall);
+        assertEquals(12345L, result);
     }
 }
