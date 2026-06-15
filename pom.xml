@@ -38,6 +38,7 @@
 
   <modules>
     <module>apicurio-avro-converter/debezium-temporal-types</module>
+    <module>debezium-custom-converter/decimal-to-bigint</module>
   </modules>
 
   <properties>
@@ -50,6 +51,8 @@
     <debezium.version>3.4.3.Final</debezium.version>
     <connect.version>3.9.2</connect.version>
     <junit.version>5.14.3</junit.version>
+    <mockito.version>5.23.0</mockito.version>
+    <testcontainers.version>2.0.5</testcontainers.version>
   </properties>
 
   <dependencyManagement>
@@ -80,6 +83,20 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+      <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-bom</artifactId>
+        <version>${mockito.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>testcontainers-bom</artifactId>
+        <version>${testcontainers.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -96,7 +113,7 @@
         </plugin>
         <plugin>
           <artifactId>maven-compiler-plugin</artifactId>
-          <version>3.13.0</version>
+          <version>3.15.0</version>
         </plugin>
         <plugin>
           <artifactId>maven-surefire-plugin</artifactId>
