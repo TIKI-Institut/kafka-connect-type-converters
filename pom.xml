@@ -4,7 +4,7 @@
 
   <groupId>com.tikiinstitut</groupId>
   <artifactId>kafka-connect-type-converters</artifactId>
-  <version>1.0</version>
+  <version>1.0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>kafka-connect-type-converters</name>
   <description>This projects provides a collection of type converters for the kafka connect runtime, or frameworks
