@@ -50,13 +50,14 @@ public abstract class AbstractOracleConnectorTest {
     };
 
     @BeforeEach
-    public void setup(TestInfo testInfo) throws SQLException {
+    public void setup(TestInfo testInfo) throws Exception {
         consumedRecords = new ArrayBlockingQueue<>(100);
         Testing.Files.delete(Testing.Files.createTestingPath("data"));
 
         this.testInfo = testInfo;
 
-        createTestTable(testInfo.getDisplayName());
+        Class<?> testClass = testInfo.getTestClass().orElseThrow();
+        testClass.getMethod("createTestTable", String.class).invoke(null, testInfo.getDisplayName());
     }
 
     @AfterEach
@@ -72,14 +73,6 @@ public abstract class AbstractOracleConnectorTest {
 
         try (Connection conn = ORACLE.createConnection(""); Statement stmt = conn.createStatement()) {
             stmt.execute("DROP TABLE TEST." + testInfo.getDisplayName());
-        }
-    }
-
-    private void createTestTable(String tableName) throws SQLException {
-        try (Connection conn = ORACLE.createConnection(""); Statement stmt = conn.createStatement()) {
-            stmt.execute("CREATE TABLE TEST." + tableName + " (ID NUMBER(1,0) PRIMARY KEY, VAL_DECIMAL DECIMAL(19,0), VAL_NOT_NULL NUMBER(19,0) NOT NULL)");
-            stmt.execute(String.format("GRANT SELECT ON %s TO %s", "TEST." + tableName, "c##dbzuser"));
-            stmt.execute("ALTER TABLE TEST." + tableName + " ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
         }
     }
 

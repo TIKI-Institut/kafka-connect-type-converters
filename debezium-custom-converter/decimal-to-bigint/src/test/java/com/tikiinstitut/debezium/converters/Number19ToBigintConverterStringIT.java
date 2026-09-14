@@ -6,6 +6,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -52,5 +53,12 @@ public class Number19ToBigintConverterStringIT extends AbstractOracleConnectorTe
         assertFalse(after.schema().field("VAL_NOT_NULL").schema().isOptional());
     }
 
+    public static void createTestTable(String tableName) throws SQLException {
+        try (Connection conn = ORACLE.createConnection(""); Statement stmt = conn.createStatement()) {
+            stmt.execute("CREATE TABLE TEST." + tableName + " (ID NUMBER(1,0) PRIMARY KEY, VAL_DECIMAL DECIMAL(19,0), VAL_NOT_NULL NUMBER(19,0) NOT NULL)");
+            stmt.execute(String.format("GRANT SELECT ON %s TO %s", "TEST." + tableName, "c##dbzuser"));
+            stmt.execute("ALTER TABLE TEST." + tableName + " ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+        }
+    }
 
 }
