@@ -24,7 +24,7 @@ public class Number19ToBigintConverterIT extends AbstractOracleConnectorTest {
         awaitRunningDebeziumEngine();
 
         try (Connection conn = ORACLE.createConnection(""); Statement stmt = conn.createStatement()) {
-            stmt.execute("INSERT INTO TEST." + testInfo.getDisplayName() + " (ID, VAL_DECIMAL, VAL_NOT_NULL) VALUES (1, 1234567890123456789, 111)");
+            stmt.execute("INSERT INTO " + getTableFQN(testInfo.getDisplayName()) + " (ID, VAL_DECIMAL, VAL_NOT_NULL) VALUES (1, 1234567890123456789, 111)");
         }
 
         SourceRecord record = consumedRecords.poll(20, TimeUnit.SECONDS);
@@ -47,9 +47,9 @@ public class Number19ToBigintConverterIT extends AbstractOracleConnectorTest {
 
     public static void createTestTable(String tableName) throws SQLException {
         try (Connection conn = ORACLE.createConnection(""); Statement stmt = conn.createStatement()) {
-            stmt.execute("CREATE TABLE TEST." + tableName + " (ID NUMBER(1,0) PRIMARY KEY, VAL_DECIMAL DECIMAL(19,0), VAL_NOT_NULL NUMBER(19,0) NOT NULL)");
-            stmt.execute(String.format("GRANT SELECT ON %s TO %s", "TEST." + tableName, "c##dbzuser"));
-            stmt.execute("ALTER TABLE TEST." + tableName + " ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+            stmt.execute("CREATE TABLE " + tableName + " (ID NUMBER(1,0) PRIMARY KEY, VAL_DECIMAL DECIMAL(19,0), VAL_NOT_NULL NUMBER(19,0) NOT NULL)");
+            stmt.execute(String.format("GRANT SELECT ON %s TO %s", tableName, "c##dbzuser"));
+            stmt.execute("ALTER TABLE " + tableName + " ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
         }
     }
 

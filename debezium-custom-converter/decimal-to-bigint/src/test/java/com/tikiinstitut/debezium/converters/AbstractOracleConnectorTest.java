@@ -36,6 +36,7 @@ public abstract class AbstractOracleConnectorTest {
     protected BlockingQueue<SourceRecord> consumedRecords;
     private final AtomicBoolean isEngineRunning = new AtomicBoolean(false);
     protected TestInfo testInfo;
+    private static final String SCHEMANAME = "TEST";
 
     protected final DebeziumEngine.ConnectorCallback wrapperConnectorCallback = new DebeziumEngine.ConnectorCallback() {
         @Override
@@ -57,7 +58,7 @@ public abstract class AbstractOracleConnectorTest {
         this.testInfo = testInfo;
 
         Class<?> testClass = testInfo.getTestClass().orElseThrow();
-        testClass.getMethod("createTestTable", String.class).invoke(null, testInfo.getDisplayName());
+        testClass.getMethod("createTestTable", String.class).invoke(null, getTableFQN(testInfo.getDisplayName()));
     }
 
     @AfterEach
@@ -72,8 +73,14 @@ public abstract class AbstractOracleConnectorTest {
         }
 
         try (Connection conn = ORACLE.createConnection(""); Statement stmt = conn.createStatement()) {
-            stmt.execute("DROP TABLE TEST." + testInfo.getDisplayName());
+            stmt.execute("DROP TABLE " + getTableFQN(testInfo.getDisplayName()));
         }
+    }
+
+    // Limit the table name to a maximum of 30 characters; this is a limit of Oracle
+    protected String getTableFQN(String tableName) {
+        String fqn = SCHEMANAME + "." + tableName;
+        return fqn.length() > 30 ? fqn.substring(0,29) : fqn;
     }
 
     protected Properties createDebeziumProperties(String testCaseName) {
@@ -92,7 +99,7 @@ public abstract class AbstractOracleConnectorTest {
         props.setProperty("database.dbname", "free");
         props.setProperty("database.pdb.name", ORACLE.getDatabaseName());
         props.setProperty("topic.prefix", testCaseName);
-        props.setProperty("table.include.list", "TEST." + testCaseName);
+        props.setProperty("table.include.list", getTableFQN(testCaseName));
         props.setProperty("database.connection.adapter", "logminer");
         props.setProperty("snapshot.mode", "initial");
         props.setProperty("log.mining.strategy", "hybrid");
