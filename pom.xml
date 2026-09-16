@@ -40,6 +40,7 @@
     <module>apicurio-avro-converter/debezium-temporal-types</module>
     <module>debezium-custom-converter/decimal-to-bigint</module>
     <module>debezium-custom-converter/testcontainer-base</module>
+    <module>debezium-custom-converter/variablescaledecimal</module>
   </modules>
 
   <properties>
