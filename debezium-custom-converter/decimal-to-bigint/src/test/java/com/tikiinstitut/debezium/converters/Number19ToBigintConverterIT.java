@@ -19,6 +19,9 @@ public class Number19ToBigintConverterIT extends AbstractOracleConnectorTest {
     public void shouldConvertBigDecimalValues() throws Exception {
         final Properties props = createDebeziumProperties(testInfo.getDisplayName());
 
+        props.setProperty("converters", "decimal_to_bigint");
+        props.setProperty("decimal_to_bigint.type", "com.tikiinstitut.debezium.converters.Number19ToBigintConverter");
+
         startDebeziumEngine(props);
 
         awaitRunningDebeziumEngine();

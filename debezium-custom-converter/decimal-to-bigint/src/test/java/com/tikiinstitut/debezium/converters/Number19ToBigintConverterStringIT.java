@@ -27,6 +27,9 @@ public class Number19ToBigintConverterStringIT extends AbstractOracleConnectorTe
         // this setting let LogMiner send String values to the CustomConverter
         props.setProperty("snapshot.locking.mode", "none");
 
+        props.setProperty("converters", "decimal_to_bigint");
+        props.setProperty("decimal_to_bigint.type", "com.tikiinstitut.debezium.converters.Number19ToBigintConverter");
+
         startDebeziumEngine(props);
 
         awaitRunningDebeziumEngine();

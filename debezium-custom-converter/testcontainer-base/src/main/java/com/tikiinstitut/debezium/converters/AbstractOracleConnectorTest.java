@@ -86,9 +86,7 @@ public abstract class AbstractOracleConnectorTest {
     protected Properties createDebeziumProperties(String testCaseName) {
         final Properties props = new Properties();
 
-        props.setProperty("converters", "decimal_to_bigint");
-        props.setProperty("decimal_to_bigint.type", "com.tikiinstitut.debezium.converters.Number19ToBigintConverter");
-
+        props.setProperty("converters", "");
         props.setProperty("name", testCaseName);
         props.setProperty("connector.class", "io.debezium.connector.oracle.OracleConnector");
         props.setProperty("database.hostname", ORACLE.getHost());
