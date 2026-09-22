@@ -38,6 +38,12 @@ public class VariableScaleDecimalConverter implements CustomConverter<SchemaBuil
         String columnTypeName = column.typeName();
         String columnName = column.name();
 
+        // Only NUMBER and FLOAT become VariableScaleDecimal. We don't
+        // care about other types without a scale (i.e. VARCHAR2, DATE)
+        if (!columnTypeName.equals("NUMBER") && !columnTypeName.equals("FLOAT")) {
+            return;
+        }
+
         SchemaBuilder schemaBuilder;
         Converter converterFunction;
 
@@ -54,14 +60,10 @@ public class VariableScaleDecimalConverter implements CustomConverter<SchemaBuil
             converterFunction = getConverterFunction(columnName,
                     number -> toBigDecimal(number).setScale(scale, RoundingMode.HALF_UP));
         }
-        else if (columnTypeName.equals("NUMBER") || columnTypeName.equals("FLOAT")) {
+        else {
             // FLOAT(*), DOUBLE PRECISION and REAL types all have typeName FLOAT
             schemaBuilder = SchemaBuilder.float64();
             converterFunction = getConverterFunction(columnName, Number::doubleValue);
-        }
-        else {
-            LOGGER.warn("{} does not have a scale but does not match any type for conversion", columnName);
-            return;
         }
 
         if (column.isOptional()){
