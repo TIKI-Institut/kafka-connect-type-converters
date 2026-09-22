@@ -1,10 +1,12 @@
 package com.tikiinstitut.debezium.converters;
 
+import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -18,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class VariableScaleDecimalConverterIT extends AbstractOracleConnectorTest {
 
     private static final String INTEGER_COLUMNS_REGEX = "(^.*_ID$)|(^IDENT$)|(^.*_COUNT)";
+    private static final String DECIMAL_COLUMNS_REGEX = "(.*_PRICE)";
 
     // Row 1 gives the snapshot something to emit; row 2 is inserted only once the snapshot
     // is done, so it can only come from LogMiner
@@ -56,14 +59,17 @@ public class VariableScaleDecimalConverterIT extends AbstractOracleConnectorTest
         props.setProperty("converters", "variablescaledecimal");
         props.setProperty("variablescaledecimal.type", "com.tikiinstitut.debezium.converters.VariableScaleDecimalConverter");
         props.setProperty("variablescaledecimal.integerColumnsRegex", INTEGER_COLUMNS_REGEX);
+        props.setProperty("variablescaledecimal.decimalColumnsRegex", DECIMAL_COLUMNS_REGEX);
+        props.setProperty("variablescaledecimal.decimalPrecision", "19");
+        props.setProperty("variablescaledecimal.decimalScale", "6");
         return props;
     }
 
     private void insertRow(int id) throws SQLException {
         try (Connection conn = ORACLE.createConnection(""); Statement stmt = conn.createStatement()) {
             stmt.execute(String.format("""
-                    INSERT INTO %s (ID, FLOAT_COL, NUMBER_COL, NUMBER_COL_ID, IDENT, NUMBER_COL_COUNT, DOUBLE_PRECISION_COL, REAL_COL)
-                    VALUES (%d, 20.0, 300.0, 4000, 50000.0, 600000, 7622.289912, 89874.23986)""",
+                    INSERT INTO %s (ID, FLOAT_COL, NUMBER_COL, NUMBER_COL_ID, IDENT, NUMBER_COL_COUNT, DOUBLE_PRECISION_COL, REAL_COL, THRESHOLD_PRICE)
+                    VALUES (%d, 20.0, 300.0, 4000, 50000.0, 600000, 7622.289912, 89874.23986, 19.99)""",
                     getTableFQN(testInfo.getDisplayName()), id));
         }
     }
@@ -85,6 +91,17 @@ public class VariableScaleDecimalConverterIT extends AbstractOracleConnectorTest
         assertInt64(after, "NUMBER_COL_ID", 4000L);
         assertInt64(after, "IDENT", 50000L);
         assertInt64(after, "NUMBER_COL_COUNT", 600000L);
+
+        assertDecimal(after, "THRESHOLD_PRICE", new BigDecimal("19.990000"));
+    }
+
+    private static void assertDecimal(Struct after, String field, BigDecimal expected) {
+        Schema schema = after.schema().field(field).schema();
+        assertEquals(Decimal.LOGICAL_NAME, schema.name(), field + " should be registered as Decimal");
+        assertEquals("6", schema.parameters().get("scale"), field + " scale");
+        assertEquals("19", schema.parameters().get("connect.decimal.precision"), field + " precision");
+        assertNotNull(after.get(field), field + " must not be null - the converter failed open");
+        assertEquals(expected, after.get(field), field);
     }
 
     private static void assertFloat64(Struct after, String field, double expected) {
@@ -113,7 +130,8 @@ public class VariableScaleDecimalConverterIT extends AbstractOracleConnectorTest
                             IDENT NUMBER,
                             NUMBER_COL_COUNT NUMBER,
                             DOUBLE_PRECISION_COL DOUBLE PRECISION,
-                            REAL_COL REAL
+                            REAL_COL REAL,
+                            THRESHOLD_PRICE NUMBER
                         )""".formatted(tableName));
             stmt.execute("GRANT SELECT ON %s TO c##dbzuser".formatted(tableName));
             stmt.execute("ALTER TABLE %s ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS".formatted(tableName));

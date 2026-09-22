@@ -2,6 +2,7 @@ package com.tikiinstitut.debezium.converters;
 
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
+import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,7 @@ import static org.mockito.Mockito.*;
 class VariableScaleDecimalConverterTest {
 
     private static final String INTEGER_COLUMNS_REGEX = "(^.*_ID$)|(^IDENT$)";
+    private static final String DECIMAL_COLUMNS_REGEX = "(.*_PRICE)|(.*_LOSTRATE_PERCENT)";
 
     @Test
     void shouldConvertNumberWithoutScaleToDouble() {
@@ -214,10 +216,88 @@ class VariableScaleDecimalConverterTest {
         verify(registration, never()).register(any(), any());
     }
 
+    @Test
+    void shouldConvertMatchingColumnToDecimal() {
+        RelationalColumn column = mock(RelationalColumn.class);
+        when(column.typeName()).thenReturn("NUMBER");
+        when(column.name()).thenReturn("THRESHOLD_PRICE");
+        when(column.scale()).thenReturn(OptionalInt.empty());
+        when(column.isOptional()).thenReturn(true);
+
+        CustomConverter.ConverterRegistration<SchemaBuilder> registration = mock(CustomConverter.ConverterRegistration.class);
+        ArgumentCaptor<CustomConverter.Converter> converterCaptor = ArgumentCaptor.forClass(CustomConverter.Converter.class);
+        ArgumentCaptor<SchemaBuilder> schemaBuilderCaptor = ArgumentCaptor.forClass(SchemaBuilder.class);
+
+        newConverter(INTEGER_COLUMNS_REGEX, DECIMAL_COLUMNS_REGEX).converterFor(column, registration);
+
+        verify(registration).register(schemaBuilderCaptor.capture(), converterCaptor.capture());
+
+        Schema schema = schemaBuilderCaptor.getValue().build();
+        assertEquals(Decimal.LOGICAL_NAME, schema.name());
+        assertEquals("6", schema.parameters().get("scale"));
+        assertEquals("19", schema.parameters().get("connect.decimal.precision"));
+
+        CustomConverter.Converter valueConverter = converterCaptor.getValue();
+
+        // Scale is normalised, from BigDecimal and from the String LogMiner delivers
+        assertEquals(new BigDecimal("19.990000"), valueConverter.convert(new BigDecimal("19.99")));
+        assertEquals(new BigDecimal("19.990000"), valueConverter.convert("19.99"));
+
+        // Values below the configured scale keep their exact value
+        assertEquals(new BigDecimal("12.345000"), valueConverter.convert(new BigDecimal("12.345")));
+
+        // Beyond the configured scale the value is rounded half up, not truncated
+        assertEquals(new BigDecimal("1.234568"), valueConverter.convert(new BigDecimal("1.23456789")));
+
+        assertNull(valueConverter.convert(null));
+    }
+
+    @Test
+    void shouldPreferIntegerOverDecimalWhenBothMatch() {
+        RelationalColumn column = mock(RelationalColumn.class);
+        when(column.typeName()).thenReturn("NUMBER");
+        when(column.name()).thenReturn("ORDERS_ID");
+        when(column.scale()).thenReturn(OptionalInt.empty());
+        when(column.isOptional()).thenReturn(true);
+
+        CustomConverter.ConverterRegistration<SchemaBuilder> registration = mock(CustomConverter.ConverterRegistration.class);
+        ArgumentCaptor<SchemaBuilder> schemaBuilderCaptor = ArgumentCaptor.forClass(SchemaBuilder.class);
+
+        newConverter(INTEGER_COLUMNS_REGEX, "(.*_ID)").converterFor(column, registration);
+
+        verify(registration).register(schemaBuilderCaptor.capture(), any());
+
+        assertEquals(Schema.Type.INT64, schemaBuilderCaptor.getValue().build().type());
+    }
+
+    @Test
+    void shouldNotMapFloatToDecimal() {
+        // FLOAT is binary floating point, a decimal mapping would misrepresent it
+        RelationalColumn column = mock(RelationalColumn.class);
+        when(column.typeName()).thenReturn("FLOAT");
+        when(column.name()).thenReturn("THRESHOLD_PRICE");
+        when(column.scale()).thenReturn(OptionalInt.empty());
+        when(column.isOptional()).thenReturn(true);
+
+        CustomConverter.ConverterRegistration<SchemaBuilder> registration = mock(CustomConverter.ConverterRegistration.class);
+        ArgumentCaptor<SchemaBuilder> schemaBuilderCaptor = ArgumentCaptor.forClass(SchemaBuilder.class);
+
+        newConverter(INTEGER_COLUMNS_REGEX, DECIMAL_COLUMNS_REGEX).converterFor(column, registration);
+
+        verify(registration).register(schemaBuilderCaptor.capture(), any());
+
+        assertEquals(Schema.Type.FLOAT64, schemaBuilderCaptor.getValue().build().type());
+    }
+
     private static VariableScaleDecimalConverter newConverter(String integerColumnsRegex) {
+        return newConverter(integerColumnsRegex, "^$");
+    }
+
+    private static VariableScaleDecimalConverter newConverter(String integerColumnsRegex, String decimalColumnsRegex) {
         VariableScaleDecimalConverter converter = new VariableScaleDecimalConverter();
         Properties props = new Properties();
         props.setProperty("integerColumnsRegex", integerColumnsRegex);
+        props.setProperty("decimalColumnsRegex", decimalColumnsRegex);
         converter.configure(props);
         return converter;
     }
