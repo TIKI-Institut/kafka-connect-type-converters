@@ -4,6 +4,7 @@ import io.debezium.embedded.Connect;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.util.Testing;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.*;
 import org.testcontainers.junit.jupiter.Container;
@@ -20,6 +21,8 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -127,5 +130,46 @@ public abstract class AbstractOracleConnectorTest {
 
     protected void awaitRunningDebeziumEngine() {
         Awaitility.await().atMost(60, TimeUnit.SECONDS).until(isEngineRunning::get);
+    }
+
+    // source.snapshot: "true"/"last" while snapshotting, "false" or absent while streaming
+    protected static String snapshotMarker(SourceRecord record) {
+        if (record == null || !(record.value() instanceof Struct value)) {
+            return null;
+        }
+        Struct source = value.getStruct("source");
+        if (source == null || source.schema().field("snapshot") == null) {
+            return null;
+        }
+        return source.getString("snapshot");
+    }
+
+    // Which reader produced the record: the snapshot reads via JDBC (BigDecimal),
+    // LogMiner parses the redo text (String)
+    protected static boolean isSnapshotRecord(SourceRecord record) {
+        String marker = snapshotMarker(record);
+        return marker != null && !"false".equals(marker);
+    }
+
+    // Polls until a matching record arrives, discarding the rest
+    protected SourceRecord awaitRecord(Predicate<SourceRecord> predicate, String description) {
+        AtomicReference<SourceRecord> matched = new AtomicReference<>();
+        Awaitility.await(description).atMost(2, TimeUnit.MINUTES).until(() -> {
+            SourceRecord record = consumedRecords.poll(5, TimeUnit.SECONDS);
+            if (record != null && predicate.test(record)) {
+                matched.set(record);
+                return true;
+            }
+            return false;
+        });
+        return matched.get();
+    }
+
+    // awaitRunningDebeziumEngine() only waits for connectorStarted(), which fires before the
+    // snapshot reads any table; inserting after it races the snapshot. Needs a row to exist
+    // beforehand, otherwise the snapshot emits nothing to wait for.
+    protected void awaitSnapshotCompleted() {
+        awaitRecord(record -> "last".equals(snapshotMarker(record)),
+                "initial snapshot to emit its last record");
     }
 }
