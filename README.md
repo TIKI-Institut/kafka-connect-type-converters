@@ -42,4 +42,51 @@ converters: number19_to_bigint
 number19_to_bigint.type: com.tikiinstitut.debezium.converters.Number19ToBigintConverter 
 ```
 
+### VariableScaleDecimal converter
 
+Debezium custom converter that replaces `io.debezium.data.VariableScaleDecimal` with a primitive type.
+
+With `decimal.handling.mode: precise`, Oracle columns declared as scale-less `NUMBER` or as `FLOAT(n)`
+carry no fixed scale, so Debezium emits `io.debezium.data.VariableScaleDecimal`, a struct of
+`{scale, value}`. As a struct it becomes an Avro record, which the Apicurio Avro converter registers as
+its own artifact and links by schema reference. Consumers that do not resolve schema references then fail
+with `Undefined schema: io.debezium.data.VariableScaleDecimal`.
+
+This converter maps those columns to `int64`, `Decimal` or `float64` instead, so no record type and no
+schema reference is created. Columns that already have a scale, such as `NUMBER(19,0)`, `NUMBER(19,3)` and
+`NUMBER(*,0)`, are left untouched.
+
+#### Type matrix
+
+| Oracle type                         | matches                 | Connect type                          |
+|-------------------------------------|-------------------------|---------------------------------------|
+| `NUMBER` (no precision or scale)    | `integerColumnsRegex`   | `int64`                               |
+| `NUMBER` (no precision or scale)    | `decimalColumnsRegex`   | `Decimal(decimalPrecision, decimalScale)` |
+| `NUMBER` (no precision or scale)    | neither                 | `float64`                             |
+| `FLOAT(n)`                          | not consulted           | `float64`                             |
+
+`integerColumnsRegex` wins when a column name matches both. `FLOAT` is binary floating point and is never
+mapped to a decimal.
+
+#### Configuration
+
+| Property               | Default | Description                                                             |
+|------------------------|---------|-------------------------------------------------------------------------|
+| `integerColumnsRegex`  | `^$`    | Column names to map to `int64`                                          |
+| `decimalColumnsRegex`  | `^$`    | Column names to map to `Decimal`                                        |
+| `decimalPrecision`     | `19`    | Precision of the `Decimal` schema                                       |
+| `decimalScale`         | `6`     | Scale of the `Decimal` schema, values beyond it are rounded half up     |
+
+Both regexes default to `^$`, which matches nothing, so every scale-less `NUMBER` becomes `float64` until
+they are configured.
+
+example:
+
+```yaml
+converters: variablescaledecimal
+variablescaledecimal.type: com.tikiinstitut.debezium.converters.VariableScaleDecimalConverter
+variablescaledecimal.integerColumnsRegex: "(.*_ID)|(IDENT)"
+variablescaledecimal.decimalColumnsRegex: "(.*_PRICE)"
+variablescaledecimal.decimalPrecision: "19"
+variablescaledecimal.decimalScale: "6"
+```
