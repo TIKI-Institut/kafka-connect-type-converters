@@ -134,9 +134,9 @@ class Number19ToBigintConverterTest {
             hexString.append(String.format("%02x", b));
         }
 
-        String hexToRawCall = Number19ToBigintConverter.OracleHexToRawHelper.HEXTORAW_FUNCTION_START +
+        String hexToRawCall = OracleHexToRawHelper.HEXTORAW_FUNCTION_START +
                 hexString +
-                Number19ToBigintConverter.OracleHexToRawHelper.HEXTORAW_FUNCTION_END;
+                OracleHexToRawHelper.HEXTORAW_FUNCTION_END;
 
         Object result = valueConverter.convert(hexToRawCall);
         assertEquals(12345L, result);

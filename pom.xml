@@ -38,6 +38,7 @@
 
   <modules>
     <module>apicurio-avro-converter/debezium-temporal-types</module>
+    <module>debezium-custom-converter/oracle-common</module>
     <module>debezium-custom-converter/decimal-to-bigint</module>
     <module>debezium-custom-converter/testcontainer-base</module>
     <module>debezium-custom-converter/variablescaledecimal</module>
@@ -70,6 +71,11 @@
         <version>${debezium.version}</version>
         <type>pom</type>
         <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.tikiinstitut</groupId>
+        <artifactId>debezium-custom-converter-oracle-common</artifactId>
+        <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.kafka</groupId>
@@ -124,6 +130,10 @@
         <plugin>
           <artifactId>maven-jar-plugin</artifactId>
           <version>3.4.2</version>
+        </plugin>
+        <plugin>
+          <artifactId>maven-shade-plugin</artifactId>
+          <version>3.6.0</version>
         </plugin>
         <plugin>
           <artifactId>maven-install-plugin</artifactId>

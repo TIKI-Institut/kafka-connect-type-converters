@@ -2,7 +2,6 @@ package com.tikiinstitut.debezium.converters;
 
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
-import oracle.sql.NUMBER;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,54 +44,11 @@ public class Number19ToBigintConverter implements CustomConverter<SchemaBuilder,
                     return ((Number) value).longValue();
                 }
                 if (value instanceof String) {
-                    if (OracleHexToRawHelper.isHexToRawFunctionCall((String) value)) {
-                        return new BigDecimal(new NUMBER(OracleHexToRawHelper.convertHexToRawFunctionToByteArray((String) value)).stringValue()).longValue();
-                    }
-
-                    return new BigDecimal((String) value).longValue();
+                    return OracleHexToRawHelper.toBigDecimal((String) value).longValue();
                 }
                 LOGGER.warn("Unexpected value type for column {}: {} (value: {})", column.name(), value.getClass().getName(), value);
                 return null;
             });
         }
     }
-
-    /**
-     * This Helper Class has extracted source code from the official Debezium project at
-     * [[io.debezium.connector.oracle.OracleValueConverters]
-     * to avoid a direct dependency.
-     * As otherwise binary incompatible changes in these methods would break our SPI implementation.
-     */
-    static class OracleHexToRawHelper {
-        /*
-         * Copyright Debezium Authors.
-         *
-         * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
-         */
-        public static final String HEXTORAW_FUNCTION_START = "HEXTORAW('";
-        public static final String HEXTORAW_FUNCTION_END = "')";
-
-        public static boolean isHexToRawFunctionCall(String value) {
-            return value != null && value.startsWith(HEXTORAW_FUNCTION_START) && value.endsWith(HEXTORAW_FUNCTION_END);
-        }
-
-        public static String getHexToRawHexString(String hexToRawValue) {
-            if (isHexToRawFunctionCall(hexToRawValue)) {
-                return hexToRawValue.substring(10, hexToRawValue.length() - 2);
-            }
-            return hexToRawValue;
-        }
-
-        private static byte[] convertHexToRawFunctionToByteArray(String value) {
-            final String rawValue = getHexToRawHexString(value);
-            int len = rawValue.length();
-            byte[] data = new byte[len / 2];
-            for (int i = 0; i < len; i += 2) {
-                data[i / 2] = (byte) ((Character.digit(rawValue.charAt(i), 16) << 4)
-                        + Character.digit(rawValue.charAt(i + 1), 16));
-            }
-            return data;
-        }
-    }
-
 }

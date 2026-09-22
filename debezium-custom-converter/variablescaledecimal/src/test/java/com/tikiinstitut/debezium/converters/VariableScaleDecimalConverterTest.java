@@ -129,9 +129,9 @@ class VariableScaleDecimalConverterTest {
             hexString.append(String.format("%02x", b));
         }
 
-        String hexToRawCall = VariableScaleDecimalConverter.OracleHexToRawHelper.HEXTORAW_FUNCTION_START +
+        String hexToRawCall = OracleHexToRawHelper.HEXTORAW_FUNCTION_START +
                 hexString +
-                VariableScaleDecimalConverter.OracleHexToRawHelper.HEXTORAW_FUNCTION_END;
+                OracleHexToRawHelper.HEXTORAW_FUNCTION_END;
 
         assertEquals(12345L, valueConverter.convert(hexToRawCall));
     }
