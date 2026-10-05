@@ -48,7 +48,8 @@ public class Number19ToBigintConverterIT extends AbstractOracleConnectorTest {
         assertFalse(after.schema().field("VAL_NOT_NULL").schema().isOptional());
     }
 
-    public static void createTestTable(String tableName) throws SQLException {
+    @Override
+    protected void createTestTable(String tableName) throws SQLException {
         try (Connection conn = ORACLE.createConnection(""); Statement stmt = conn.createStatement()) {
             stmt.execute("CREATE TABLE " + tableName + " (ID NUMBER(1,0) PRIMARY KEY, VAL_DECIMAL DECIMAL(19,0), VAL_NOT_NULL NUMBER(19,0) NOT NULL)");
             stmt.execute(String.format("GRANT SELECT ON %s TO %s", tableName, "c##dbzuser"));

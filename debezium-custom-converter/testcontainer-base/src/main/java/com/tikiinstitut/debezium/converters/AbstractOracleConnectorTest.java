@@ -41,6 +41,8 @@ public abstract class AbstractOracleConnectorTest {
     protected TestInfo testInfo;
     private static final String SCHEMANAME = "TEST";
 
+    protected abstract void createTestTable(String tableName) throws SQLException;
+
     protected final DebeziumEngine.ConnectorCallback wrapperConnectorCallback = new DebeziumEngine.ConnectorCallback() {
         @Override
         public void connectorStarted() {
@@ -60,8 +62,7 @@ public abstract class AbstractOracleConnectorTest {
 
         this.testInfo = testInfo;
 
-        Class<?> testClass = testInfo.getTestClass().orElseThrow();
-        testClass.getMethod("createTestTable", String.class).invoke(null, getTableFQN(testInfo.getDisplayName()));
+        this.createTestTable(getTableFQN(testInfo.getDisplayName()));
     }
 
     @AfterEach
@@ -83,7 +84,7 @@ public abstract class AbstractOracleConnectorTest {
     // Limit the table name to a maximum of 30 characters; this is a limit of Oracle
     protected String getTableFQN(String tableName) {
         String fqn = SCHEMANAME + "." + tableName;
-        return fqn.length() > 30 ? fqn.substring(0,29) : fqn;
+        return fqn.length() > 30 ? fqn.substring(0,30) : fqn;
     }
 
     protected Properties createDebeziumProperties(String testCaseName) {

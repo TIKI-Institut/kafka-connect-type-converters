@@ -118,7 +118,8 @@ public class VariableScaleDecimalConverterIT extends AbstractOracleConnectorTest
         assertEquals(expected, after.get(field), field);
     }
 
-    public static void createTestTable(String tableName) throws SQLException {
+    @Override
+    protected void createTestTable(String tableName) throws SQLException {
         try (Connection conn = ORACLE.createConnection(""); Statement stmt = conn.createStatement()) {
             stmt.execute("""
                     CREATE TABLE %s
